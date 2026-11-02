@@ -1,0 +1,30 @@
+# OncoVision dependencies
+# Supported runtime: Python 3.10-3.13.
+# Recommended on Windows: Python 3.12. TensorFlow has no Python 3.14 wheel.
+
+# Web application, sessions, authentication and API routes
+Flask==3.0.3
+Werkzeug==3.0.3
+python-dotenv>=1.0
+requests>=2.32
+
+# Mammogram preprocessing, EfficientNet inference and Grad-CAM
+numpy>=1.26
+Pillow>=10.0
+opencv-python-headless>=4.10
+tensorflow>=2.16,<2.22
+
+# Model training, evaluation and persisted tabular models
+pandas>=2.2
+scikit-learn>=1.5
+joblib>=1.4
+
+# Uploaded doctor-report PDF extraction and optional OCR
+pypdf>=4.0
+pytesseract>=0.3.10
+
+# AI Assistant provider integration
+openai>=1.40
+
+# Automated regression tests
+pytest==8.3.2
