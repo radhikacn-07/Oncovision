@@ -1,0 +1,47 @@
+{% extends 'doctor_shell.html' %}
+{% block title %}Doctor Dashboard | OncoVision{% endblock %}
+{% set active_page = 'dashboard' %}
+{% set page_title = 'Clinical Dashboard' %}
+{% block doctor_content %}
+<section class="doctor-access-card" aria-labelledby="doctorAccessTitle">
+  <div><span class="section-kicker">Patient-authorized access</span><h2 id="doctorAccessTitle">Enter Patient Access Code</h2><p>Enter the patient's current 6-digit code to unlock their records for the remaining access window.</p></div>
+  <form id="claimPatientAccess"><label for="patientAccessCodeInput">6-digit code</label><div><input id="patientAccessCodeInput" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" required><button type="submit"><i class="bi bi-unlock"></i> Unlock Access</button></div><p id="doctorAccessMessage" class="access-inline-message" role="status"></p></form>
+</section>
+<section class="panel stats-panel">
+  <div class="stats-grid doctor-stats">
+    <div class="stat-card blue"><div class="stat-icon"><i class="bi bi-folder2-open"></i></div><div><p>Patients</p><h4 data-dashboard-stat="patients">&mdash;</h4></div></div>
+    <div class="stat-card green"><div class="stat-icon"><i class="bi bi-check-square-fill"></i></div><div><p>Stable</p><h4 data-dashboard-stat="stable">&mdash;</h4></div></div>
+    <div class="stat-card red"><div class="stat-icon"><i class="bi bi-exclamation-triangle-fill"></i></div><div><p>High Risk</p><h4 data-dashboard-stat="high_risk">&mdash;</h4></div></div>
+    <div class="stat-card purple"><div class="stat-icon"><i class="bi bi-cpu"></i></div><div><p>AI Cases</p><h4 data-dashboard-stat="ai_cases">&mdash;</h4></div></div>
+  </div>
+</section>
+<section class="content-grid doctor-grid">
+  <div class="panel wide-panel">
+    <div class="panel-header-row"><h4>Mammogram Review Queue</h4><a href="{{ url_for('doctor_image_reviews') }}">View All</a></div>
+    <div class="table-scroll"><table class="data-table doctor-review-table"><thead><tr><th>Patient</th><th>AI Result</th><th>Probability</th><th>Status</th><th>Action</th></tr></thead><tbody>
+      {% for record in image_reviews[:5] %}
+      <tr><td><button class="patient-summary-link" type="button" data-patient-identity="{{ record.patient_identity }}">{{ record.patient_name }}</button></td><td><span class="pill {{ 'bad' if record.class_name == 'Malignant' else 'good' }}">{{ record.class_name }}</span></td><td>{{ record.malignancy_probability }}%</td><td><span class="review-status-pill">{{ record.review_status }}</span></td><td><a class="view-btn" href="{{ url_for('doctor_image_reviews') }}#review-{{ record.id }}">Open</a></td></tr>
+      {% else %}<tr><td colspan="5">No actively authorized patient records. Enter a patient access code above.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="panel ai-summary-panel"><div class="panel-header-row"><h4>AI Summary</h4></div><div class="ai-summary-box" id="doctorAiSummary" aria-live="polite"><p class="ai-summary-placeholder">Select a patient from the queue to view their AI summary.</p><small>Model outputs and Grad-CAM overlays are research aids, not diagnoses.</small></div></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const escapeHtml = (value) => { const node = document.createElement('span'); node.textContent = String(value ?? ''); return node.innerHTML; };
+  const accessForm=document.getElementById('claimPatientAccess'),accessInput=document.getElementById('patientAccessCodeInput'),accessMessage=document.getElementById('doctorAccessMessage');
+  accessInput.addEventListener('input',()=>{accessInput.value=accessInput.value.replace(/\D/g,'').slice(0,6);});
+  accessForm.addEventListener('submit',async(event)=>{event.preventDefault();const submit=accessForm.querySelector('button');submit.disabled=true;accessMessage.textContent='Checking access code…';accessMessage.className='access-inline-message';try{const response=await fetch('/api/access/claim-code',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:accessInput.value})}),data=await response.json();if(!response.ok)throw new Error(data.message||data.error||'Access could not be unlocked.');accessMessage.textContent='Patient access unlocked. Refreshing the clinical queue…';accessMessage.className='access-inline-message success';window.setTimeout(()=>window.location.reload(),650);}catch(error){accessMessage.textContent=error.message;accessMessage.className='access-inline-message error';submit.disabled=false;}});
+  const refreshStats = async () => { try { const response = await fetch('/api/dashboard/stats', {credentials:'same-origin'}); if (!response.ok) return; const stats = await response.json(); document.querySelectorAll('[data-dashboard-stat]').forEach((node) => { node.textContent = stats[node.dataset.dashboardStat] ?? 0; }); } catch (_) {} };
+  const refreshActivePatients=async()=>{try{const response=await fetch('/api/access/my-active-patients',{credentials:'same-origin'});if(!response.ok)return;const data=await response.json(),active=new Set(data.active_patients.map(item=>item.patient_id));document.querySelectorAll('.patient-summary-link').forEach(link=>{if(!active.has(link.dataset.patientIdentity))link.closest('tr')?.remove();});}catch(_){}};
+  refreshStats();refreshActivePatients(); const timer = window.setInterval(()=>{refreshStats();refreshActivePatients();},30000); window.addEventListener('pagehide', () => window.clearInterval(timer), {once:true});
+  const summary = document.getElementById('doctorAiSummary');
+  document.querySelectorAll('.patient-summary-link').forEach((button) => button.addEventListener('click', async () => {
+    document.querySelectorAll('.patient-summary-link').forEach((item) => item.classList.remove('active')); button.classList.add('active'); summary.innerHTML='<p class="ai-summary-placeholder">Loading patient summary&hellip;</p>';
+    try { const response=await fetch(`/api/patients/${encodeURIComponent(button.dataset.patientIdentity)}/ai-summary`,{credentials:'same-origin'}); const data=await response.json(); if(!response.ok) throw new Error(data.error||'Summary unavailable.'); summary.innerHTML=`<div class="summary-patient-head"><strong>${escapeHtml(data.patient)}</strong><span class="pill ${data.result==='Malignant'?'bad':'good'}">${escapeHtml(data.result)}</span></div><dl><div><dt>Malignancy probability</dt><dd>${Number(data.probability).toFixed(1)}%</dd></div><div><dt>Model confidence</dt><dd>${Number(data.confidence).toFixed(1)}%</dd></div><div><dt>Review status</dt><dd>${escapeHtml(data.review_status)}</dd></div></dl><p>${escapeHtml(data.model_notes)}</p><small>Model outputs and Grad-CAM overlays are research aids, not diagnoses.</small>`; } catch(error) { summary.innerHTML=`<p class="ai-summary-placeholder">${escapeHtml(error.message)}</p><small>Model outputs and Grad-CAM overlays are research aids, not diagnoses.</small>`; }
+  }));
+});
+</script>
+{% endblock %}

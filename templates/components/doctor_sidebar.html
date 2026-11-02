@@ -1,0 +1,22 @@
+{% set brand_home = url_for('doctor_dashboard') %}
+{% set brand_subtitle = 'Clinical Decision Support' %}
+<aside class="sidebar doctor-sidebar" id="doctorSidebar">
+  <div class="sidebar-brand-head">
+    {% include 'components/app_brand.html' %}
+    <button class="sidebar-close-button" type="button" data-sidebar-close aria-label="Close navigation"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <nav class="side-nav" aria-label="Doctor navigation">
+    <a class="nav-item {{ 'active' if active_page == 'dashboard' }}" href="{{ url_for('doctor_dashboard') }}"><i class="bi bi-grid"></i>Dashboard</a>
+    <div class="nav-group-title">Clinical Workflow</div>
+    <a class="nav-item {{ 'active' if active_page == 'reviews' }}" href="{{ url_for('doctor_image_reviews') }}"><i class="bi bi-images"></i>Mammogram Review Queue</a>
+    <a class="nav-item {{ 'active' if active_page == 'assessment' }}" href="{{ url_for('clinical_assessment') }}"><i class="bi bi-clipboard2-pulse"></i>Clinical Assessment</a>
+    <a class="nav-item {{ 'active' if active_page == 'prediction-history' }}" href="{{ url_for('portal', page='prediction-history') }}"><i class="bi bi-clock-history"></i>Prediction History</a>
+    <a class="nav-item {{ 'active' if active_page == 'reports' }}" href="{{ url_for('portal', page='reports') }}"><i class="bi bi-file-earmark-bar-graph"></i>Reports</a>
+    <div class="nav-group-title">Clinical Support</div>
+    <a class="nav-item {{ 'active' if active_page == 'chat' }}" href="{{ url_for('chat') }}"><i class="bi bi-chat"></i>Doctor AI Assistant</a>
+    <a class="nav-item {{ 'active' if active_page == 'resources' }}" href="{{ url_for('portal', page='resources') }}"><i class="bi bi-journal-medical"></i>Clinical Resources</a>
+    <a class="nav-item {{ 'active' if active_page == 'profile' }}" href="{{ url_for('doctor_profile') }}"><i class="bi bi-person-badge"></i>Doctor Profile</a>
+    <a class="nav-item {{ 'active' if active_page == 'help' }}" href="{{ url_for('portal', page='help') }}"><i class="bi bi-question-circle"></i>Help &amp; Support</a>
+  </nav>
+  <a class="sidebar-logout" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+</aside>

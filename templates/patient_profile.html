@@ -1,0 +1,44 @@
+{% extends 'patient_shell.html' %}
+{% block title %}My Profile | OncoVision{% endblock %}
+{% set active_page = 'profile' %}{% set page_title = 'My Profile' %}
+{% block patient_content %}
+<section class="professional-profile">
+  <header class="profile-hero-card"><div class="profile-avatar-large">{{ profile.name[0]|upper }}</div><div><span class="section-kicker">Patient Account</span><h1>{{ profile.name }}</h1><p>{{ profile.email or profile.identity }}</p><span class="verified-profile"><i class="bi bi-shield-check"></i> Logged-in patient profile</span></div><a href="{{ url_for('patient_results') }}"><i class="bi bi-folder2-open"></i> View My Reports</a></header>
+  {% if saved %}<div class="profile-alert success"><i class="bi bi-check-circle"></i> Profile updated successfully.</div>{% endif %}
+  {% if error %}<div class="profile-alert error"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}
+  <section class="patient-share-card" aria-labelledby="patientShareTitle">
+    <div class="patient-share-icon"><i class="bi bi-person-lock"></i></div>
+    <div class="patient-share-copy"><span class="section-kicker">Temporary clinical access</span><h2 id="patientShareTitle">Share My Data With a Doctor</h2><p>Share this code with your doctor. It expires in 30 minutes and only gives them access to your records for that time.</p></div>
+    <button type="button" id="generateAccessCode"><i class="bi bi-key"></i> Generate Access Code</button>
+    <div id="patientAccessResult" class="patient-access-result" hidden aria-live="polite"><small>Your secure access code</small><strong id="patientAccessCode">------</strong><span><i class="bi bi-clock"></i> Expires in <b id="patientAccessCountdown">30:00</b></span></div>
+    <p id="patientAccessMessage" class="access-inline-message" role="status"></p>
+  </section>
+  <div class="profile-layout">
+    <form class="profile-form-card" method="post">
+      <div class="profile-card-title"><div><h2>Personal Information</h2><p>Keep your contact and basic health information up to date.</p></div><i class="bi bi-person-vcard"></i></div>
+      <div class="profile-fields">
+        <label>Full name<input name="name" required value="{{ profile.name }}" autocomplete="name"></label>
+        <label>Email address<input name="email" type="email" required value="{{ profile.email or profile.identity }}" autocomplete="email"></label>
+        <label>Phone number<input name="phone" type="tel" inputmode="tel" value="{{ profile.phone or '' }}" placeholder="Enter your number" autocomplete="tel"></label>
+        <label>Date of birth<input name="date_of_birth" type="date" value="{{ profile.date_of_birth or '' }}"></label>
+        <label>Blood group<select name="blood_group"><option value="">Select</option>{% for group in ['A+','A-','B+','B-','AB+','AB-','O+','O-'] %}<option {% if profile.blood_group == group %}selected{% endif %}>{{ group }}</option>{% endfor %}</select></label>
+        <label>Emergency contact<input name="emergency_contact" value="{{ profile.emergency_contact or '' }}" placeholder="Name and phone"></label>
+        <label class="wide">Address<textarea name="address" placeholder="Your current address">{{ profile.address or '' }}</textarea></label>
+      </div>
+      <div class="profile-form-actions"><span><i class="bi bi-lock"></i> Information is visible only in your logged-in session.</span><button type="submit"><i class="bi bi-check2"></i> Save Profile</button></div>
+    </form>
+    <aside class="profile-summary-card"><h2>Account Summary</h2><div class="profile-stat"><i class="bi bi-file-medical"></i><span><b>{{ records|length }}</b><small>Saved mammogram reports</small></span></div><div class="profile-stat"><i class="bi bi-person-check"></i><span><b>{{ records|selectattr('review_status','equalto','Reviewed')|list|length }}</b><small>Clinician-reviewed reports</small></span></div><div class="profile-stat"><i class="bi bi-clock-history"></i><span><b>{{ records|selectattr('review_status','equalto','Pending review')|list|length }}</b><small>Awaiting review</small></span></div><div class="privacy-note"><i class="bi bi-shield-lock"></i><div><b>Privacy reminder</b><p>Do not share your password or reports through unsecured channels.</p></div></div></aside>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const button=document.getElementById('generateAccessCode'),result=document.getElementById('patientAccessResult'),code=document.getElementById('patientAccessCode'),countdown=document.getElementById('patientAccessCountdown'),message=document.getElementById('patientAccessMessage');
+  let timer;
+  function startCountdown(expiresAt){window.clearInterval(timer);const update=()=>{const remaining=Math.max(0,new Date(expiresAt).getTime()-Date.now()),seconds=Math.ceil(remaining/1000),minutes=Math.floor(seconds/60);countdown.textContent=`${String(minutes).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;if(!remaining){window.clearInterval(timer);message.textContent='This code has expired. Generate a new code before sharing access.';message.className='access-inline-message error';button.disabled=false;}};update();timer=window.setInterval(update,1000);}
+  button.addEventListener('click',async()=>{button.disabled=true;message.textContent='Generating a secure code…';message.className='access-inline-message';try{const response=await fetch('/api/access/generate-code',{method:'POST',credentials:'same-origin'}),data=await response.json();if(!response.ok)throw new Error(data.error||'Access code could not be generated.');code.textContent=data.code;result.hidden=false;message.textContent='Code ready. Share it only with the doctor you want to authorize.';message.className='access-inline-message success';startCountdown(data.expires_at);}catch(error){message.textContent=error.message;message.className='access-inline-message error';}finally{button.disabled=false;}});
+  window.addEventListener('pagehide',()=>window.clearInterval(timer),{once:true});
+})();
+</script>
+{% endblock %}

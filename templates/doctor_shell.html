@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% set user_name = session.get('user', {}).get('name', 'Doctor') %}
+{% block body %}
+<div class="dashboard-shell">
+  {% include 'components/doctor_sidebar.html' %}
+  <main class="dashboard-main patient-section-main">
+    <header class="topbar"><div class="topbar-left"><button class="icon-button" type="button" aria-label="Close navigation" aria-controls="doctorSidebar" aria-expanded="true"><i class="bi bi-x-lg"></i></button>{% set compact_brand_home = url_for('doctor_dashboard') %}{% include 'components/compact_topbar_brand.html' %}<h3>{{ page_title }}</h3></div><a class="user-mini profile-menu-link" href="{{ url_for('doctor_profile') }}" aria-label="Open doctor profile"><div class="avatar doctor-avatar-soft">{{ user_name[0]|upper }}</div><div><strong>Dr. {{ user_name }}</strong><small>Doctor Mode</small></div><i class="bi bi-chevron-right"></i></a></header>
+    <div class="patient-section-content">{% block doctor_content %}{% endblock %}</div>
+  </main>
+</div>
+{% endblock %}

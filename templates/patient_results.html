@@ -1,0 +1,16 @@
+{% extends 'patient_shell.html' %}
+{% block title %}My Mammogram Results | OncoVision{% endblock %}
+{% set active_page = 'results' %}{% set page_title = 'My Results & Reviews' %}
+{% block patient_content %}
+<div class="review-page embedded-review-page">
+  <header class="review-page-head"><div><span class="section-kicker">Patient Mode</span><h1>My Mammogram Results</h1><p>Track AI analysis, Grad-CAM attention and clinician review in one place.</p></div></header>
+  {% if records %}<div class="review-list">{% for record in records %}
+  <article class="review-card" id="analysis-{{ record.id }}">
+    <header><div><small>{{ record.report_id }}</small><h2>{{ record.original_filename }}</h2></div><span class="review-state {{ 'complete' if record.review_status == 'Reviewed' else 'followup' if record.review_status == 'Follow-up required' else '' }}">{{ record.review_status }}</span></header>
+    <div class="review-images"><figure><img src="{{ url_for('analysis_file', analysis_id=record.id, kind='processed') }}" alt="Processed mammogram"><figcaption>Breast-region model input</figcaption></figure><figure><img src="{{ url_for('analysis_file', analysis_id=record.id, kind='heatmap') }}" alt="Grad-CAM attention"><figcaption>Grad-CAM attention — not a lesion boundary</figcaption></figure></div>
+    <div class="review-facts"><span><small>Model result</small><b>{{ record.class_name }}</b></span><span><small>Class confidence</small><b>{{ record.confidence }}%</b></span><span><small>Malignancy probability</small><b>{{ record.malignancy_probability }}%</b></span></div>
+    <p class="review-explanation">{{ record.explanation }}</p>
+    {% if record.doctor_name %}<div class="doctor-review-note"><i class="bi bi-person-check"></i><div><b>Reviewed by {{ record.doctor_name }}</b><p>{{ record.doctor_notes or 'No additional note was provided.' }}</p></div></div>{% else %}<div class="pending-note"><i class="bi bi-clock"></i> Awaiting clinician review</div>{% endif %}
+  </article>{% endfor %}</div>{% else %}<div class="empty-state">No mammogram analysis yet. <a href="{{ url_for('upload_predict') }}">Upload a mammogram</a> to begin.</div>{% endif %}
+</div>
+{% endblock %}

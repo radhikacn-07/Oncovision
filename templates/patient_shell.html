@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% set user_name = session.get('user', {}).get('name', 'Patient') %}
+{% block body %}
+<div class="dashboard-shell ref-dashboard patient-dashboard-shell">
+  <aside class="sidebar ref-sidebar" id="patientSidebar">
+    {% set brand_home = url_for('landing') %}{% set brand_subtitle = 'AI-Powered Breast Cancer Detection' %}
+    <div class="sidebar-brand-head">
+      {% include 'components/app_brand.html' %}
+      <button class="sidebar-close-button" type="button" data-sidebar-close aria-label="Close navigation"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <nav class="side-nav">
+      <a class="nav-item {{ 'active' if active_page == 'dashboard' }}" href="{{ url_for('patient_dashboard') }}"><i class="bi bi-grid"></i>Dashboard</a>
+      <div class="nav-group-title">Patient Mode</div>
+      <a class="nav-item {{ 'active' if active_page == 'analysis' }}" href="{{ url_for('upload_predict') }}"><i class="bi bi-image"></i>Mammogram Analysis</a>
+      <a class="nav-item {{ 'active' if active_page == 'report-explainer' }}" href="{{ url_for('report_explainer') }}"><i class="bi bi-file-earmark-medical"></i>Explain Doctor Report</a>
+      <a class="nav-item {{ 'active' if active_page == 'results' }}" href="{{ url_for('patient_results') }}"><i class="bi bi-clock-history"></i>My Results & Reviews</a>
+      <a class="nav-item {{ 'active' if active_page == 'ai-explanations' }}" href="{{ url_for('portal', page='ai-explanations') }}"><i class="bi bi-chat-square-text"></i>AI Explanations</a>
+      <a class="nav-item {{ 'active' if active_page == 'chat' }}" href="{{ url_for('chat') }}"><i class="bi bi-chat-dots"></i>Patient AI Assistant</a>
+      <a class="nav-item {{ 'active' if active_page == 'self-examination' }}" href="{{ url_for('self_examination') }}"><i class="bi bi-person-arms-up"></i>Self-Examination Guide</a>
+      <a class="nav-item {{ 'active' if active_page == 'find-oncologist' }}" href="{{ url_for('find_oncologist') }}"><i class="bi bi-geo-alt"></i>Find Oncologist</a>
+      <a class="nav-item {{ 'active' if active_page == 'health-knowledge' }}" href="{{ url_for('portal', page='health-knowledge') }}"><i class="bi bi-book"></i>Health Knowledge</a>
+      <div class="nav-group-title">General</div>
+      <a class="nav-item {{ 'active' if active_page == 'profile' }}" href="{{ url_for('patient_profile') }}"><i class="bi bi-person"></i>Profile</a>
+      <a class="nav-item {{ 'active' if active_page == 'help' }}" href="{{ url_for('portal', page='help') }}"><i class="bi bi-question-circle"></i>Help & Support</a>
+    </nav>
+    <a class="sidebar-logout" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+  </aside>
+  <main class="dashboard-main patient-section-main">
+    <header class="topbar">
+      <div class="topbar-left"><button class="icon-button patient-menu-button" type="button" aria-label="Close navigation" aria-controls="patientSidebar" aria-expanded="true"><i class="bi bi-x-lg"></i></button>{% set compact_brand_home = url_for('patient_dashboard') %}{% include 'components/compact_topbar_brand.html' %}<h3>{{ page_title }}</h3></div>
+      <a class="user-mini profile-menu-link" href="{{ url_for('patient_profile') }}"><div class="avatar">{{ user_name[0]|upper }}</div><div><strong>{{ user_name }}</strong><small>Patient Mode</small></div><i class="bi bi-chevron-right"></i></a>
+    </header>
+    <div class="patient-section-content">{% block patient_content %}{% endblock %}</div>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'doctor_shell.html' %}
+{% block title %}Report Details | OncoVision{% endblock %}
+{% set active_page = 'reports' %}
+{% set page_title = 'Report Details' %}
+{% block doctor_content %}
+<div class="doctor-print-report">
+  <div class="report-view-actions no-print">
+    <a href="{{ url_for('portal', page='reports') }}"><i class="bi bi-arrow-left"></i> Back to Reports</a>
+    <button type="button" onclick="window.print()"><i class="bi bi-file-earmark-pdf"></i> Print / Save PDF</button>
+  </div>
+  <article class="doctor-report-sheet">
+    <header class="doctor-report-head">
+      <div class="report-brand"><span class="ribbon-logo"></span><div><h2>OncoVision</h2><p>Clinical Decision Support Report</p></div></div>
+      <div><small>REPORT TYPE</small><strong>{{ 'Mammogram Analysis' if report_kind == 'mammogram' else 'Clinical Stage Prediction' }}</strong><small>GENERATED</small><strong>{{ record.created_at }}</strong></div>
+    </header>
+    <div class="prototype-warning"><i class="bi bi-exclamation-triangle"></i><p><b>Research Prototype / Non-Diagnostic Report</b><span>This report supports clinician review and does not replace qualified interpretation or clinical judgment.</span></p></div>
+    {% if report_kind == 'mammogram' %}
+    <section class="doctor-report-meta"><span><small>PATIENT</small><b>{{ record.patient_name }}</b></span><span><small>REPORT ID</small><b>{{ record.report_id }}</b></span><span><small>MODEL RESULT</small><b>{{ record.class_name }}</b></span><span><small>REVIEW STATUS</small><b>{{ record.review_status }}</b></span></section>
+    <section class="doctor-report-images"><figure><img src="{{ url_for('analysis_file', analysis_id=record.id, kind='processed') }}" alt="Processed mammogram"><figcaption>Breast-region model input</figcaption></figure><figure><img src="{{ url_for('analysis_file', analysis_id=record.id, kind='heatmap') }}" alt="Grad-CAM attention overlay"><figcaption>Grad-CAM model attention — not a lesion boundary</figcaption></figure></section>
+    <section class="doctor-report-results"><article><small>Classification</small><strong>{{ record.class_name }}</strong></article><article><small>Class confidence</small><strong>{{ '%.1f'|format(record.confidence) }}%</strong></article><article><small>Malignancy probability</small><strong>{{ '%.1f'|format(record.malignancy_probability) }}%</strong></article></section>
+    <section class="doctor-report-copy"><h3>AI-supported explanation</h3><p>{{ record.explanation }}</p>{% if record.doctor_notes %}<h3>Clinical review note</h3><p>{{ record.doctor_notes }}</p>{% endif %}</section>
+    {% else %}
+    <section class="doctor-report-meta"><span><small>PATIENT</small><b>{{ record.patient_name }}</b></span><span><small>PATIENT ID</small><b>{{ record.patient_id }}</b></span><span><small>PREDICTED STAGE</small><b>{{ record.predicted_stage }}</b></span><span><small>TNM RULE MATCH</small><b>{{ '%.1f'|format(record.confidence) }}%</b></span></section>
+    <section class="doctor-report-results prediction-report-results"><article><small>Tumor</small><strong>{{ record.tumor }}</strong></article><article><small>Node</small><strong>{{ record.node }}</strong></article><article><small>Metastasis</small><strong>{{ record.metastasis }}</strong></article><article><small>Grade</small><strong>{{ record.grade }}</strong></article><article><small>ER / PR</small><strong>{{ record.er or '—' }} / {{ record.pr or '—' }}</strong></article><article><small>HER2 / Ki-67</small><strong>{{ record.her2 or '—' }} / {{ record.ki67 if record.ki67 is not none else '—' }}%</strong></article></section>
+    <section class="doctor-report-copy"><h3>Clinical stage explanation</h3><p>{{ record.summary }}</p>{% if record.notes %}<h3>Additional clinical notes</h3><p>{{ record.notes }}</p>{% endif %}</section>
+    {% endif %}
+    <footer class="doctor-report-footer"><b>CLINICAL DISCLAIMER</b><p>AI outputs and Grad-CAM visualizations are research aids, not diagnoses. Final interpretation and care decisions remain with qualified clinicians.</p></footer>
+  </article>
+</div>
+{% endblock %}

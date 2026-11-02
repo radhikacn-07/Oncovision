@@ -1,0 +1,48 @@
+{% extends 'doctor_shell.html' %}
+{% block title %}Mammogram Review Queue | OncoVision{% endblock %}
+{% set active_page = 'reviews' %}{% set page_title = 'Mammogram Review Queue' %}
+{% block doctor_content %}
+<main class="review-page doctor-review-page light-review-queue">
+  <header class="review-page-head"><div><span class="section-kicker">Doctor Mode</span><h1>Mammogram Review Queue</h1><p>Select a patient to inspect their latest mammogram, model attention and clinical review details.</p></div><span class="queue-count">{{ records|length }} patient{{ '' if records|length == 1 else 's' }}</span></header>
+
+  <section id="reviewQueueList" class="review-queue-overview" aria-label="Patient review queue">
+    {% if records %}<div class="patient-review-grid">{% for record in records %}
+      <article class="patient-review-card" id="review-{{ record.id }}" data-review-card data-review-id="{{ record.id }}" data-patient-identity="{{ record.patient_identity }}" tabindex="0" role="button" aria-label="View {{ record.patient_name }} mammogram review">
+        <div class="review-patient-avatar">{{ record.patient_name[:1]|upper }}</div>
+        <div class="review-card-main"><div class="review-card-name"><h2>{{ record.patient_name }}</h2><span class="pill {{ 'bad' if record.class_name == 'Malignant' else 'good' }}">{{ record.class_name }}</span></div><small>{{ record.report_id }}</small><div class="review-card-meta"><span><i class="bi bi-percent"></i><b>{{ record.malignancy_probability }}%</b> probability</span><span><i class="bi bi-calendar3"></i>{{ record.created_at[:10] }}</span></div></div>
+        <div class="review-card-actions"><span class="review-state {{ 'complete' if record.review_status == 'Reviewed' else 'followup' if record.review_status == 'Follow-up required' else '' }}">{{ record.review_status }}</span><button type="button" class="review-open-button">View <i class="bi bi-arrow-right"></i></button></div>
+      </article>
+    {% endfor %}</div>{% else %}<div class="empty-state">No actively authorized patient mammograms. Ask the patient for a temporary access code, then unlock it on the Clinical Dashboard.</div>{% endif %}
+  </section>
+
+  <section id="reviewDetail" class="review-detail-view" hidden aria-live="polite">
+    <button type="button" id="backToQueue" class="review-back-button"><i class="bi bi-arrow-left"></i> Back to patient queue</button>
+    <div id="reviewDetailContent" class="review-detail-content"></div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script>
+(() => {
+  const list = document.getElementById('reviewQueueList');
+  const detail = document.getElementById('reviewDetail');
+  const content = document.getElementById('reviewDetailContent');
+  let openPatientIdentity = null;
+  const escapeHtml = value => { const node=document.createElement('span'); node.textContent=String(value??''); return node.innerHTML; };
+  const showList = () => { openPatientIdentity=null; detail.hidden=true; list.hidden=false; history.replaceState(null,'',location.pathname); window.scrollTo({top:0,behavior:'smooth'}); };
+  document.getElementById('backToQueue').addEventListener('click', showList);
+
+  async function openReview(id) {
+    list.hidden=true; detail.hidden=false; content.innerHTML='<div class="review-detail-loading"><span class="spinner-border"></span><p>Loading patient review…</p></div>';
+    try {
+      const response=await fetch(`/api/doctor/mammogram-reviews/${id}`,{credentials:'same-origin'}); const record=await response.json(); if(!response.ok) throw new Error(record.error||'Review could not be loaded.'); openPatientIdentity=record.patient_identity;
+      content.innerHTML=`<article class="review-card review-detail-card" data-review-id="${record.id}"><header><div><small>${escapeHtml(record.report_id)} · ${escapeHtml(record.patient_name)}</small><h2>${escapeHtml(record.original_filename)}</h2></div><span class="review-state ${record.review_status==='Reviewed'?'complete':record.review_status==='Follow-up required'?'followup':''}">${escapeHtml(record.review_status)}</span></header><div class="review-images"><figure><img src="${escapeHtml(record.processed_url)}" alt="Processed mammogram for ${escapeHtml(record.patient_name)}"><figcaption>Breast-region model input</figcaption></figure><figure><img src="${escapeHtml(record.heatmap_url)}" alt="Grad-CAM attention for ${escapeHtml(record.patient_name)}"><figcaption>Grad-CAM attention — research aid only</figcaption></figure></div><div class="review-facts"><span><small>Model result</small><b>${escapeHtml(record.class_name)}</b></span><span><small>Class confidence</small><b>${Number(record.confidence).toFixed(1)}%</b></span><span><small>Malignancy probability</small><b>${Number(record.malignancy_probability).toFixed(1)}%</b></span></div><p class="review-explanation">${escapeHtml(record.explanation)}</p><form class="doctor-review-form"><label>Review status<select name="status"><option ${record.review_status==='Pending review'?'selected':''}>Pending review</option><option ${record.review_status==='Reviewed'?'selected':''}>Reviewed</option><option ${record.review_status==='Follow-up required'?'selected':''}>Follow-up required</option></select></label><label>Clinical note<textarea name="notes" placeholder="Add a concise review note">${escapeHtml(record.doctor_notes)}</textarea></label><button type="submit">Save Review</button><span class="save-message" role="status"></span></form></article>`;
+      content.querySelector('.doctor-review-form').addEventListener('submit',saveReview); history.replaceState(null,'',`#review-${id}`); window.scrollTo({top:0,behavior:'smooth'});
+    } catch(error) { content.innerHTML=`<div class="empty-state">${escapeHtml(error.message)}</div>`; }
+  }
+  async function saveReview(event) { event.preventDefault(); const form=event.currentTarget, card=form.closest('[data-review-id]'), message=form.querySelector('.save-message'); message.textContent='Saving…'; const response=await fetch(`/api/doctor/image-reviews/${card.dataset.reviewId}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:form.status.value,notes:form.notes.value})}); const result=await response.json(); if(!response.ok){message.textContent=result.error||'Could not save';return;} card.querySelector('.review-state').textContent=result.record.review_status; const overview=document.querySelector(`[data-review-card][data-review-id="${card.dataset.reviewId}"] .review-state`); if(overview){overview.textContent=result.record.review_status;overview.className='review-state '+(result.record.review_status==='Reviewed'?'complete':result.record.review_status==='Follow-up required'?'followup':'');} message.textContent='Review saved'; }
+  document.querySelectorAll('[data-review-card]').forEach(card => { card.addEventListener('click',event=>{if(!event.target.closest('a'))openReview(card.dataset.reviewId)}); card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openReview(card.dataset.reviewId)}}); });
+  async function verifyActiveAccess(){try{const response=await fetch('/api/access/my-active-patients',{credentials:'same-origin'}),data=await response.json();if(!response.ok)return;const active=new Set(data.active_patients.map(item=>item.patient_id));document.querySelectorAll('[data-review-card]').forEach(card=>{if(!active.has(card.dataset.patientIdentity))card.remove();});if(openPatientIdentity&&!active.has(openPatientIdentity)){content.innerHTML='<div class="empty-state access-expired-inline"><i class="bi bi-shield-lock"></i><b>Your access to this patient\'s data has expired — ask them for a new code.</b></div>';}}catch(_){}}
+  verifyActiveAccess();const accessTimer=window.setInterval(verifyActiveAccess,30000);window.addEventListener('pagehide',()=>window.clearInterval(accessTimer),{once:true});
+  const match=location.hash.match(/^#review-(\d+)$/); if(match) openReview(match[1]);
+})();
+</script>{% endblock %}

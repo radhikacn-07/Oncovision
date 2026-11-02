@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Create Account | OncoVision{% endblock %}
+{% block body %}
+<main class="create-account-page">
+  {% set brand_home = url_for('landing') %}{% set brand_subtitle = 'AI-Powered Breast Cancer Detection' %}
+  {% include 'components/app_brand.html' %}
+  <div class="create-account-layout">
+  <aside class="signup-welcome">
+    <span class="signup-shield"><i class="bi bi-shield-check"></i></span>
+    <span class="section-kicker">Welcome to OncoVision</span>
+    <h2>Your breast-health journey, securely connected.</h2>
+    <p>Create one private account to access the tools designed for your role.</p>
+    <ul><li><i class="bi bi-check2-circle"></i><span><b>Private workspace</b><small>Your patient and doctor experiences remain separated.</small></span></li><li><i class="bi bi-check2-circle"></i><span><b>Connected records</b><small>Keep results, explanations and reviews in one place.</small></span></li><li><i class="bi bi-check2-circle"></i><span><b>Secure password</b><small>Your password is protected using one-way hashing.</small></span></li></ul>
+    <div class="signup-trust"><i class="bi bi-lock-fill"></i> Secure registration · Role-protected access</div>
+  </aside>
+  <section class="create-account-card">
+    <span class="section-kicker">Secure Registration</span><h1>Create Account</h1><p>Enter your details and choose the workspace made for you.</p>
+    <form id="createAccountForm" class="account-create-form" novalidate>
+      <label>Full Name<input id="signupName" name="name" type="text" autocomplete="name" required placeholder="Enter your full name"><small class="field-error" data-error-for="name"></small></label>
+      <label>Email<input id="signupEmail" name="email" type="email" autocomplete="email" required placeholder="you@example.com"><small class="field-error" data-error-for="email"></small></label>
+      <label>Password<div class="account-password"><input id="signupPassword" name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="Minimum 8 characters"><button class="toggle-password" type="button" data-target="signupPassword" aria-label="Show or hide password"><i class="bi bi-eye"></i></button></div><small class="field-hint">Use at least 8 characters.</small><small class="field-error" data-error-for="password"></small></label>
+      <fieldset><legend>Account Type</legend><div class="mode-grid-ref"><label class="mode-option selected patient-mode"><input type="radio" name="role" value="patient" checked><i class="bi bi-person-fill"></i><span><b>Patient Mode</b><small>(For Patients)</small></span></label><label class="mode-option doctor-mode"><input type="radio" name="role" value="doctor"><i class="bi bi-heart-pulse-fill"></i><span><b>Doctor Mode</b><small>(For Doctors)</small></span></label></div><small class="field-error" data-error-for="role"></small></fieldset>
+      <div id="signupStatus" class="account-form-status" role="alert" hidden></div>
+      <button class="account-submit" type="submit">Save and Continue <i class="bi bi-arrow-right"></i></button>
+      <p class="account-login-link">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+    </form>
+  </section>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}<script>
+document.addEventListener('DOMContentLoaded',()=>{const form=document.getElementById('createAccountForm'),status=document.getElementById('signupStatus');const showErrors=errors=>{form.querySelectorAll('.field-error').forEach(node=>node.textContent='');Object.entries(errors||{}).forEach(([field,message])=>{const node=form.querySelector(`[data-error-for="${field}"]`);if(node)node.textContent=message;});};form.addEventListener('submit',async event=>{event.preventDefault();showErrors({});status.hidden=true;if(!form.reportValidity())return;const values=Object.fromEntries(new FormData(form));const submit=form.querySelector('.account-submit');submit.disabled=true;try{const response=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)}),result=await response.json();if(!response.ok){showErrors(result.errors);throw new Error(result.error||'Account could not be created.');}status.className='account-form-status success';status.textContent='Account created — please log in';status.hidden=false;setTimeout(()=>window.location.assign('/login?created=true'),650);}catch(error){status.className='account-form-status error';status.textContent=error.message;status.hidden=false;submit.disabled=false;}});});
+</script>{% endblock %}

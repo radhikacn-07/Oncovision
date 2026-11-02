@@ -1,0 +1,37 @@
+{% extends 'doctor_shell.html' %}
+{% block title %}Doctor Profile | OncoVision{% endblock %}
+{% set active_page = 'profile' %}{% set page_title = 'Doctor Profile' %}
+{% block doctor_content %}
+<section class="professional-profile doctor-professional-profile">
+  <header class="profile-hero-card doctor-profile-hero">
+    <div class="profile-avatar-large doctor-profile-avatar">{{ profile.name[0]|upper }}</div>
+    <div><span class="section-kicker">Verified clinical workspace</span><h1>Dr. {{ profile.name }}</h1><p>{{ profile.email or profile.identity }}</p><span class="verified-profile"><i class="bi bi-shield-check"></i> Logged-in doctor profile</span></div>
+    <a href="{{ url_for('doctor_dashboard') }}"><i class="bi bi-grid"></i> Clinical Dashboard</a>
+  </header>
+  {% if saved %}<div class="profile-alert success"><i class="bi bi-check-circle"></i> Doctor profile updated successfully.</div>{% endif %}
+  {% if error %}<div class="profile-alert error"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}
+  <div class="profile-layout">
+    <form class="profile-form-card" method="post">
+      <div class="profile-card-title"><div><h2>Professional Information</h2><p>These details identify your active clinical workspace.</p></div><i class="bi bi-person-vcard"></i></div>
+      <div class="profile-fields">
+        <label>Full name<input name="name" required value="{{ profile.name }}" autocomplete="name"></label>
+        <label>Email address<input name="email" type="email" required value="{{ profile.email or profile.identity }}" autocomplete="email"></label>
+        <label>Phone number<input name="phone" type="tel" inputmode="tel" value="{{ profile.phone or '' }}" placeholder="Enter your number" autocomplete="tel"></label>
+        <label>Specialization<input name="specialization" value="{{ profile.specialization or '' }}" placeholder="e.g. Medical Oncology"></label>
+        <label>Medical registration number<input name="registration_number" value="{{ profile.registration_number or '' }}" placeholder="Registration ID"></label>
+        <label>Hospital / Clinic<input name="hospital" value="{{ profile.hospital or '' }}" placeholder="Current institution"></label>
+        <label>Years of experience<input name="experience" type="number" min="0" max="70" value="{{ profile.experience or '' }}" placeholder="Years"></label>
+        <label class="wide">Professional address<textarea name="address" placeholder="Hospital or clinic address">{{ profile.address or '' }}</textarea></label>
+      </div>
+      <div class="profile-form-actions"><span><i class="bi bi-lock"></i> Your profile is available only inside your authenticated workspace.</span><button type="submit"><i class="bi bi-check2"></i> Save Profile</button></div>
+    </form>
+    <aside class="profile-summary-card">
+      <h2>Clinical Workspace</h2>
+      <div class="profile-stat"><i class="bi bi-people"></i><span><b>{{ stats.patients }}</b><small>Patients with active access</small></span></div>
+      <div class="profile-stat"><i class="bi bi-cpu"></i><span><b>{{ stats.ai_cases }}</b><small>Accessible AI cases</small></span></div>
+      <div class="profile-stat"><i class="bi bi-exclamation-triangle"></i><span><b>{{ stats.high_risk }}</b><small>High-risk latest results</small></span></div>
+      <div class="privacy-note"><i class="bi bi-shield-lock"></i><div><b>Clinical privacy</b><p>Patient records remain visible only while the patient-granted access window is active.</p></div></div>
+    </aside>
+  </div>
+</section>
+{% endblock %}

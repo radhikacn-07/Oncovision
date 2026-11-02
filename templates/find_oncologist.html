@@ -1,0 +1,99 @@
+{% extends 'patient_shell.html' %}{% block title %}Find Nearby Oncologist | OncoVision{% endblock %}{% set active_page = 'find-oncologist' %}{% set page_title = 'Find Oncologist' %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynhFwVBfMZ7F9Vt7g9o/gBfM4L0A=" crossorigin="">
+<style>
+  /* Loaded after Leaflet so global responsive-image rules cannot distort tiles. */
+  .leaflet-container {
+    height: 100%;
+    width: 100%;
+    z-index: 0;
+  }
+  .leaflet-container img {
+    max-width: none !important;
+  }
+  .leaflet-pane, .leaflet-tile, .leaflet-marker-icon,
+  .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg,
+  .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer,
+  .leaflet-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  #mapRef { height: 585px; min-height: 585px; }
+  #leafletMap { height: 585px; width: 100%; }
+  #mapRef .leaflet-map-pane,
+  #mapRef .leaflet-tile-pane,
+  #mapRef .leaflet-tile-container { transform-origin: 0 0; }
+  @media (max-width: 1100px) {
+    #mapRef, #leafletMap { height: 500px; min-height: 500px; }
+  }
+  @media (max-width: 760px) {
+    #mapRef, #leafletMap { height: 430px; min-height: 430px; }
+  }
+</style>
+{% endblock %}
+{% block patient_content %}
+<div class="oncologist-main embedded-oncologist"><header><div><span class="section-kicker">Patient Support</span><h1>Find Nearby Oncologist</h1><p>Search and connect with trusted breast cancer specialists near you.</p></div></header>
+<section class="search-ref location-search-ref"><label class="location-search-label">Location<div class="location-input-row"><i class="bi bi-geo-alt-fill"></i><input id="locationInput" value="" placeholder="Enter city or district" autocomplete="address-level2"></div></label><label>Search<div><i class="bi bi-search"></i><input id="doctorSearch" class="doctor-search" placeholder="Search hospital or oncology centre"></div></label><label>Facility Type<select id="specializationFilter"><option>All Facilities</option><option>Oncology Centre</option><option>Hospital</option></select></label><button id="useMyLocation" class="use-current-location" type="button" aria-label="Use my current location"><i class="bi bi-crosshair"></i><span>Use Current Location</span></button><button id="citySearchButton" type="button">Search</button></section>
+<section class="nearby-grid"><div class="nearby-list"><div class="nearby-title"><h3>Nearby Hospitals &amp; Oncology Centres <span id="hospitalCount">0 Found</span></h3><button id="applyFilter" type="button"><i class="bi bi-funnel"></i> Filter</button></div><div id="locationMessage" class="location-inline-message" role="status"></div><div id="doctorCards"></div><button id="viewMoreDoctors" class="view-more" type="button" hidden>View More <i class="bi bi-chevron-down"></i></button></div>
+<div class="map-ref" id="mapRef"><div id="leafletMap" class="leaflet-map-canvas" aria-label="Map of nearby oncology hospitals"></div><button id="searchMapArea" class="map-toolbar" type="button"><i class="bi bi-search"></i> Search this area</button><div class="zoom"><button id="zoomIn" type="button" aria-label="Zoom in">+</button><button id="zoomOut" type="button" aria-label="Zoom out">−</button></div><div class="map-key"><span><i class="pink-dot"></i>Oncologist / Hospital</span><span><i class="blue-dot"></i>Your Location</span></div></div></section>
+<section class="nearby-benefits">{% for icon,title,text in [('shield-check','Verified Specialists','All oncologists are verified and experienced.'),('calendar2-plus','Easy Appointment','Book appointments in just a few clicks.'),('chat-dots','Direct Contact','Connect directly with the clinic or hospital.'),('geo-alt','Nearby & Accessible','Find specialists near you with ease.')] %}<article><i class="bi bi-{{ icon }}"></i><p><b>{{ title }}</b><small>{{ text }}</small></p></article>{% endfor %}</section><div class="medical-disclaimer"><i class="bi bi-info-circle"></i> Disclaimer: This information is for reference only. Please confirm hospital details and consult your doctor for medical advice and treatment.</div></div>
+{% endblock %}
+{% block scripts %}<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><script>
+const locationInput=document.getElementById('locationInput'),locationButton=document.getElementById('useMyLocation'),citySearchButton=document.getElementById('citySearchButton'),doctorSearch=document.getElementById('doctorSearch'),specializationFilter=document.getElementById('specializationFilter'),filterButton=document.getElementById('applyFilter'),cards=document.getElementById('doctorCards'),count=document.getElementById('hospitalCount'),messageBox=document.getElementById('locationMessage'),viewMore=document.getElementById('viewMoreDoctors');
+let hospitals=[],showAll=false,map,markerLayer,userMarker,locationRequestPending=false;
+const LOCATION_CACHE_KEY='oncovision-current-location-v1',LOCATION_CACHE_MAX_AGE=10*60*1000;
+const escapeHtml=value=>String(value??'').replace(/[&<>'"]/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
+function setMessage(text,type='info'){messageBox.textContent=text;messageBox.className=`location-inline-message ${type}`;messageBox.hidden=!text;}
+function clearResults(text,type='info'){hospitals=[];showAll=false;renderCards();if(markerLayer)markerLayer.clearLayers();if(userMarker&&map){map.removeLayer(userMarker);userMarker=null;}setMessage(text,type);}
+function cachedLocation(){try{const saved=JSON.parse(sessionStorage.getItem(LOCATION_CACHE_KEY)||'null');return saved&&Date.now()-saved.savedAt<LOCATION_CACHE_MAX_AGE?saved:null;}catch{return null;}}
+function initials(name){return name.replace(/^Dr\.\s*/i,'').split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase()||'HC';}
+function googleMapsUrl(hospital){const query=encodeURIComponent(`${hospital.name}, ${hospital.lat}, ${hospital.lng}`);return `https://www.google.com/maps/search/?api=1&query=${query}`;}
+function filteredHospitals(){const query=doctorSearch.value.trim().toLowerCase();const specialization=specializationFilter.value;return hospitals.filter(item=>(!query||`${item.doctor} ${item.name} ${item.city} ${item.district}`.toLowerCase().includes(query))&&(specialization==='All Facilities'||item.specialization===specialization));}
+function renderCards(){const filtered=filteredHospitals(),visible=showAll?filtered:filtered.slice(0,4);count.textContent=`${filtered.length} Found`;cards.innerHTML=visible.map((item,index)=>`<article class="doctor-card-ref"><div class="portrait">${escapeHtml(initials(item.doctor))}</div><div><h4>${escapeHtml(item.doctor)} ${index===0?'<span>Nearest</span>':''}</h4><p>${escapeHtml(item.specialization)}</p><small>Listed breast-care hospital</small><div class="stars">★★★★★ <em>${Number(item.rating).toFixed(1)} rating</em></div><div class="distance"><i class="bi bi-geo-alt"></i> ${Number(item.distance_km).toFixed(1)} km away · ${escapeHtml(item.name)}, ${escapeHtml(item.city)}</div></div><aside><button type="button">View Profile</button><a href="tel:${escapeHtml(item.phone)}" aria-label="Call ${escapeHtml(item.name)}"><i class="bi bi-telephone-fill"></i></a></aside></article>`).join('');viewMore.hidden=filtered.length<=4;viewMore.innerHTML=showAll?'Show Fewer Doctors <i class="bi bi-chevron-up"></i>':'View More Doctors <i class="bi bi-chevron-down"></i>';if(!filtered.length&&hospitals.length)setMessage('No hospitals match the selected name or specialization.','info');else if(messageBox.textContent.startsWith('No hospitals match'))setMessage('');}
+function initMap(){if(!window.L){setMessage('The live map could not load. Hospital distances are still available in the list.','error');return;}map=L.map('leafletMap',{zoomControl:false,attributionControl:true,preferCanvas:true}).setView([12.9141,74.8560],12);const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors',updateWhenIdle:false,keepBuffer:4});tiles.addTo(map);tiles.on('tileerror',()=>document.getElementById('mapRef').classList.add('map-tile-warning'));markerLayer=L.layerGroup().addTo(map);const toolbar=document.getElementById('searchMapArea');const SearchAreaControl=L.Control.extend({onAdd(){toolbar.classList.add('leaflet-control');L.DomEvent.disableClickPropagation(toolbar);L.DomEvent.disableScrollPropagation(toolbar);return toolbar;}});new SearchAreaControl({position:'topleft'}).addTo(map);const refreshMapSize=()=>requestAnimationFrame(()=>map?.invalidateSize({pan:false}));map.whenReady(()=>setTimeout(refreshMapSize,100));new ResizeObserver(refreshMapSize).observe(document.getElementById('mapRef'));window.addEventListener('resize',refreshMapSize,{passive:true});}
+function renderMap(center,isUserLocation=false){if(!map)return;markerLayer.clearLayers();const bounds=[];hospitals.forEach(item=>{const icon=L.divIcon({className:'oncology-leaflet-marker',html:'<i class="bi bi-geo-alt-fill"></i>',iconSize:[34,42],iconAnchor:[17,39]});L.marker([item.lat,item.lng],{icon}).bindPopup(`<b>${escapeHtml(item.name)}</b><br>${escapeHtml(item.doctor)}<br>${Number(item.distance_km).toFixed(1)} km away`).addTo(markerLayer);bounds.push([item.lat,item.lng]);});if(userMarker){map.removeLayer(userMarker);userMarker=null;}if(center){const icon=L.divIcon({className:'user-leaflet-marker',html:'<span></span>',iconSize:[32,32],iconAnchor:[16,16]});userMarker=L.marker([center.lat,center.lng],{icon}).addTo(map).bindPopup(isUserLocation?'Your current location':'Searched location');bounds.push([center.lat,center.lng]);}map.invalidateSize({pan:false});if(bounds.length>1)map.fitBounds(bounds,{padding:[45,45],maxZoom:13});else if(center)map.setView([center.lat,center.lng],12);setTimeout(()=>{map.invalidateSize({pan:false});map.panBy([1,0]);map.panBy([-1,0]);},180);}
+async function loadResults(url,locationLabel,isUserLocation=false){setMessage('Finding nearby breast-care hospitals…','loading');citySearchButton.disabled=true;try{const response=await fetch(url),result=await response.json();if(!response.ok)throw new Error(result.message||result.error||'Location could not be found.');hospitals=result.hospitals||[];showAll=false;const center=result.user_location||result.city_location;renderCards();renderMap(center,isUserLocation);setMessage(hospitals.length?`Showing ${hospitals.length} hospital${hospitals.length===1?'':'s'} nearest to ${locationLabel}.`:`No listed oncology hospitals were found in this district. Try a nearby Karnataka city.` ,hospitals.length?'success':'info');}catch(error){hospitals=[];renderCards();setMessage(error.message,'error');}finally{citySearchButton.disabled=false;}}
+function searchCity(){const city=locationInput.value.trim();if(!city){setMessage('Please enter a city or district name.','error');return;}loadResults(`/api/hospitals-by-city?city=${encodeURIComponent(city)}&radius_km=25`,city,false);}
+function useLocation(){usePreciseLocation();}
+citySearchButton.addEventListener('click',searchCity);locationInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();searchCity();}});locationButton.addEventListener('click',useLocation);doctorSearch.addEventListener('input',()=>{showAll=false;renderCards();});specializationFilter.addEventListener('change',()=>{showAll=false;renderCards();});filterButton.addEventListener('click',()=>{showAll=false;renderCards();});viewMore.addEventListener('click',()=>{showAll=!showAll;renderCards();});cards.addEventListener('click',event=>{const button=event.target.closest('.doctor-card-ref aside button');if(!button)return;const card=[...cards.querySelectorAll('.doctor-card-ref')].indexOf(button.closest('.doctor-card-ref'));const hospital=(showAll?filteredHospitals():filteredHospitals().slice(0,4))[card];if(!hospital)return;const mapsWindow=window.open(googleMapsUrl(hospital),'_blank','noopener,noreferrer');if(mapsWindow)mapsWindow.opener=null;});document.getElementById('zoomIn').addEventListener('click',()=>map?.zoomIn());document.getElementById('zoomOut').addEventListener('click',()=>map?.zoomOut());document.getElementById('searchMapArea').addEventListener('click',()=>{if(!map)return;const center=map.getCenter();locationInput.value='Selected map area';loadResults(`/api/nearby-hospitals?lat=${center.lat}&lng=${center.lng}&radius_km=100`,'the selected map area',false);});
+/* The API returns real places: make the hospital name the primary card title. */
+function renderCards(){
+  const filtered=filteredHospitals(),visible=showAll?filtered:filtered.slice(0,4);
+  count.textContent=`${filtered.length} Found`;
+  cards.innerHTML=visible.map((item,index)=>`<article class="doctor-card-ref"><div class="portrait">${escapeHtml(initials(item.name))}</div><div class="hospital-card-copy"><h4>${escapeHtml(item.name)} ${index===0?'<span>Nearest</span>':''}</h4><p>${escapeHtml(item.specialization)}</p><small>${escapeHtml(item.doctor)}</small><div class="distance"><i class="bi bi-geo-alt"></i> ${Number(item.distance_km).toFixed(1)} km away${item.city?` &middot; ${escapeHtml(item.city)}`:''}</div></div><aside><button type="button">View Profile</button>${item.phone?`<a href="tel:${escapeHtml(item.phone)}" aria-label="Call ${escapeHtml(item.name)}"><i class="bi bi-telephone-fill"></i></a>`:''}</aside></article>`).join('');
+  viewMore.hidden=filtered.length<=4;
+  viewMore.innerHTML=showAll?'Show Fewer <i class="bi bi-chevron-up"></i>':'View More Hospitals <i class="bi bi-chevron-down"></i>';
+  if(!filtered.length&&hospitals.length)setMessage('No hospitals match the selected name or specialization.','info');
+  else if(messageBox.textContent.startsWith('No hospitals match'))setMessage('');
+}
+async function loadResults(url,locationLabel,isUserLocation=false){
+  setMessage('Finding live nearby hospitals...','loading');citySearchButton.disabled=true;
+  try{
+    const response=await fetch(url,{cache:'no-store'}),result=await response.json();
+    if(!response.ok)throw new Error(result.message||result.error||'Location could not be found.');
+    hospitals=result.hospitals||[];showAll=false;
+    const center=result.user_location||result.city_location;
+    renderCards();renderMap(center,isUserLocation);
+    setMessage(hospitals.length?`Showing ${hospitals.length} live OpenStreetMap hospital${hospitals.length===1?'':'s'} nearest to ${locationLabel}.`:`No named hospitals were found within 25 km of ${locationLabel}. Try a nearby city or select a wider map area.`,hospitals.length?'success':'info');
+  }catch(error){clearResults(error.message,'error');}
+  finally{citySearchButton.disabled=false;}
+}
+function browserPosition(){return new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:20000,maximumAge:60000}));}
+async function displayCurrentLocation(coords,fromCache=false){const latitude=Number(coords.latitude),longitude=Number(coords.longitude);locationInput.value='Current location';locationInput.dataset.lat=String(latitude);locationInput.dataset.lng=String(longitude);await loadResults(`/api/nearby-hospitals?lat=${latitude}&lng=${longitude}&radius_km=25`,fromCache?'your saved current location':'your current location',true);}
+async function usePreciseLocation(){
+  if(locationRequestPending)return;
+  if(!navigator.geolocation){clearResults('Location services are not supported by this browser. Search by city instead.','error');return;}
+  if(!window.isSecureContext){clearResults('Live location is blocked on this insecure address. On this computer open http://localhost:5000. On a phone or another device, open the app through HTTPS.','error');return;}
+  let permissionState='prompt';
+  if(navigator.permissions?.query){try{permissionState=(await navigator.permissions.query({name:'geolocation'})).state;}catch{permissionState='prompt';}}
+  if(permissionState==='denied'){sessionStorage.removeItem(LOCATION_CACHE_KEY);clearResults('Location is blocked for this site. Enable Location once in browser site settings, then press Use Current Location.','error');return;}
+  const saved=cachedLocation();
+  if(permissionState==='prompt'&&saved){await displayCurrentLocation(saved,true);return;}
+  locationRequestPending=true;locationButton.disabled=true;locationButton.classList.add('loading');locationButton.querySelector('span').textContent='Detecting Location…';setMessage(permissionState==='granted'?'Updating your current location…':'Allow location once in the browser prompt…','loading');
+  try{const position=await browserPosition(),coords={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,savedAt:Date.now()};sessionStorage.setItem(LOCATION_CACHE_KEY,JSON.stringify(coords));await displayCurrentLocation(coords,false);locationButton.classList.add('active');locationButton.querySelector('span').textContent='Location Active';}
+  catch(error){const denied=error.code===1;if(denied)sessionStorage.removeItem(LOCATION_CACHE_KEY);clearResults(denied?'Location permission was denied. Enable it in browser site settings, or search by city.':'Your current location could not be detected. Turn on device GPS and try again.','error');}
+  finally{locationRequestPending=false;locationButton.disabled=false;locationButton.classList.remove('loading');if(!locationButton.classList.contains('active'))locationButton.querySelector('span').textContent='Use Current Location';}
+}
+initMap();setMessage('Use Current Location for live nearby hospitals, or enter a city/district and press Search.','info');
+</script>{% endblock %}

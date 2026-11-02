@@ -1,0 +1,11 @@
+{% extends 'doctor_shell.html' %}
+{% block title %}Patient Access Expired | OncoVision{% endblock %}
+{% block doctor_content %}
+<section class="access-expired-card">
+  <i class="bi bi-shield-lock"></i>
+  <span class="section-kicker">Protected patient record</span>
+  <h1>Patient access unavailable</h1>
+  <p>{{ message }}</p>
+  <a href="{{ url_for('doctor_dashboard') }}"><i class="bi bi-arrow-left"></i> Return to Clinical Dashboard</a>
+</section>
+{% endblock %}

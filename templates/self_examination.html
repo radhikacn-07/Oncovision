@@ -1,0 +1,75 @@
+{% extends 'patient_shell.html' %}
+{% block title %}Self-Examination Guidance | OncoVision{% endblock %}
+{% set active_page = 'self-examination' %}{% set page_title = 'Self-Examination Guidance' %}
+{% block patient_content %}
+<section class="self-awareness-page">
+  <header class="self-page-intro"><div><span class="section-kicker">Breast Awareness</span><h1>Self-Examination Guidance</h1><p>Take a few minutes regularly to become familiar with what is normal for you.</p></div><button class="pink-action" id="openGuide" type="button"><i class="bi bi-play-circle"></i> View Guided Steps</button></header>
+
+  <section class="expert-awareness-summary" aria-labelledby="expertAwarenessTitle">
+    <div class="expert-awareness-heading"><div><span class="section-kicker">Expert guidance</span><h2 id="expertAwarenessTitle">Know what is normal for you</h2><p>Breast awareness means becoming familiar with how your breasts or chest usually look and feel, so a new change is easier to notice without becoming anxious about normal differences.</p></div><i class="bi bi-heart-pulse" aria-hidden="true"></i></div>
+    <div class="expert-takeaway-grid">
+      <article><i class="bi bi-eye"></i><div><h3>Look</h3><p>Use a mirror with arms relaxed and then raised. Notice a new change in size, shape, symmetry, skin texture or nipple appearance.</p></div></article>
+      <article><i class="bi bi-hand-index-thumb"></i><div><h3>Feel gently</h3><p>Use flat finger pads with light and firmer pressure. Cover the breast or chest, collarbone area and underarm without pressing hard enough to hurt.</p></div></article>
+      <article><i class="bi bi-person-check"></i><div><h3>Check a change</h3><p>Most changes are not cancer, but a new lump, persistent focal pain, dimpling, nipple inversion, unusual discharge or swelling should be assessed.</p></div></article>
+    </div>
+    <div class="expert-awareness-note"><i class="bi bi-shield-check"></i><p><b>Awareness—not diagnosis.</b> There is no single perfect checking technique. Self-checking does not replace mammogram screening or professional assessment; do not wait for the next screening appointment if you notice a new change.</p></div>
+    <div class="expert-source-links"><span>Guidance reviewed against:</span><a href="https://www.nhs.uk/tests-and-treatments/how-to-check-your-breasts-or-chest/" target="_blank" rel="noopener noreferrer">NHS breast/chest checking guidance <i class="bi bi-box-arrow-up-right"></i></a></div>
+  </section>
+
+  <section class="self-video-panel" aria-labelledby="selfVideoTitle">
+    <div class="self-section-heading"><div><span class="section-kicker">Video guidance</span><h2 id="selfVideoTitle">Breast Self-Check Video Guide</h2><p>Watch this practical self-check guide, then use the illustrated steps below as a quick reference.</p></div></div>
+    <div class="self-video-frame">
+      <iframe src="https://www.youtube-nocookie.com/embed/-ygucOBbKJA?controls=1&amp;rel=0&amp;playsinline=1" title="Self-Check for Breast Cancer video guide by Fortis Healthcare" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    </div>
+  </section>
+
+  <section class="self-steps-panel">
+    <div class="self-section-heading"><div><h2>How to Check for Breast Changes</h2><p>Choose a consistent time when your breasts are least tender. This awareness check does not replace screening.</p></div></div>
+    <div class="self-step-grid">
+      {% for number,icon,title,text in [
+        ('1','person-standing-dress','Look in the Mirror','Look for a new change in size, shape, symmetry or skin appearance.'),
+        ('2','person-raised-hand','Raise Your Arms','Look again with both arms raised for dimpling, pulling or shape changes.'),
+        ('3','hand-index-thumb','Feel While Lying Down','Use the flat pads of your fingers with gentle, medium and firmer pressure.'),
+        ('4','bullseye','Cover the Whole Area','Use a consistent pattern across the breast, collarbone area and underarm.'),
+        ('5','droplet','Feel in the Shower','Some people find it easier to notice a change when the skin is wet and soapy.'),
+        ('6','record-circle','Notice Nipple Changes','Look for new inversion, rash, crusting or discharge—do not repeatedly squeeze.')
+      ] %}
+      <article class="self-step-card" data-step="{{ loop.index0 }}"><span class="step-number">{{ number }}</span><div class="step-art reference-step-art"><img src="{{ url_for('static', filename='images/self-examination-step-' ~ loop.index ~ '.jpg') }}" alt="Illustration: {{ title }}" loading="lazy"></div><h3>{{ title }}</h3><p>{{ text }}</p><button type="button" aria-label="Open {{ title }} guidance">View detail <i class="bi bi-arrow-right"></i></button></article>
+      {% endfor %}
+    </div>
+    <div class="self-info-strip"><i class="bi bi-info-circle-fill"></i><span>If you notice a new or unusual change, do not panic—record the details and arrange professional assessment.</span></div>
+  </section>
+
+  <div class="self-lower-grid">
+    <section class="symptom-library"><div class="self-section-heading"><div><h2>Changes to Look Out For</h2><p>Select any change you want to record.</p></div></div><div class="symptom-card-grid">
+      {% for icon,title,text in [('circle-fill','Lump or Thickening','A new lump or thick area in the breast or underarm.'),('grid-3x3-gap','Skin Changes','Dimpling, puckering or thickening of the skin.'),('brightness-high','Redness or Rash','New redness, warmth, scaling or a nipple rash.'),('arrows-angle-expand','Change in Size or Shape','A noticeable new change in breast size or contour.'),('bullseye','Nipple Changes','New inversion, retraction, crusting or position change.'),('water','Nipple Discharge','Fluid that occurs without squeezing, especially bloody or clear.'),('activity','Persistent Focal Pain','Pain in one specific area that persists or worsens.'),('diagram-3','Underarm Swelling','A new swelling or lump under the arm or near the collarbone.')] %}
+      <button type="button" class="symptom-card" data-symptom="{{ title }}"><i class="bi bi-{{ icon }}"></i><span><b>{{ title }}</b><small>{{ text }}</small></span><i class="bi bi-plus-circle"></i></button>{% endfor %}
+    </div><div class="symptom-library-footer"><p><i class="bi bi-info-circle"></i><b>Most breast changes are not cancer.</b> A persistent new change still deserves professional assessment.</p><button class="pink-action" type="button" id="openTracker"><i class="bi bi-clipboard2-pulse"></i> Track My Changes</button></div></section>
+
+    <aside class="self-action-panel"><h2>What to Do If You Notice a Change</h2>{% for icon,title,text in [('exclamation-circle','Do Not Ignore It','Even without pain, arrange assessment for a persistent new change.'),('journal-text','Note the Details','Record when it started, exact location, appearance and progression.'),('person-badge','Consult a Clinician','A qualified professional can examine you and arrange imaging if needed.'),('calendar-check','Follow Up','Keep appointments and return if the change persists or worsens.')] %}<article><i class="bi bi-{{ icon }}"></i><div><b>{{ title }}</b><p>{{ text }}</p></div></article>{% endfor %}<a class="pink-action specialist-action" href="{{ url_for('find_oncologist') }}"><i class="bi bi-geo-alt"></i> Find a Specialist Near You</a></aside>
+  </div>
+  <footer class="self-footer-note"><span>Know your normal. Notice a change. Seek appropriate care.</span><b>Stay aware, stay supported <i class="bi bi-heart-pulse"></i></b></footer>
+</section>
+
+<dialog class="self-dialog guide-detail-dialog" id="guideDialog"><form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form><div class="guide-dialog-progress"><span id="guideProgress"></span></div><div id="guideDialogBody"></div><div class="dialog-actions"><button type="button" id="guideBack">Back</button><button class="pink-action" type="button" id="guideNext">Next Step</button></div></dialog>
+<dialog class="self-dialog tracker-dialog" id="trackerDialog"><form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form><span class="section-kicker">Private Browser Record</span><h2>Track a Breast Change</h2><p>This note stays in this browser. It is not sent to a clinic.</p><form id="symptomTracker"><label>Date noticed<input type="date" name="date" required></label><label>Selected changes<div id="selectedSymptoms" class="selected-symptoms">Select a symptom card first, or add details below.</div></label><label>Location<select name="location"><option>Left breast</option><option>Right breast</option><option>Both breasts</option><option>Left underarm</option><option>Right underarm</option></select></label><label>Notes<textarea name="notes" required placeholder="Describe the exact change, duration and whether it is worsening..."></textarea></label><button class="pink-action" type="submit"><i class="bi bi-save"></i> Save Private Note</button></form><div id="trackerHistory" class="tracker-history"></div></dialog>
+<div class="self-save-toast" id="selfSaveToast" role="status">Change saved in this browser.</div>
+{% endblock %}
+{% block scripts %}<script>
+const stepCards=[...document.querySelectorAll('.self-step-card')],guideDialog=document.getElementById('guideDialog'),guideBody=document.getElementById('guideDialogBody'),guideProgress=document.getElementById('guideProgress'),guideBack=document.getElementById('guideBack'),guideNext=document.getElementById('guideNext');let guideIndex=0;
+const guideDetails=[
+ {how:'Stand in good light with your shoulders relaxed and arms by your sides. Compare both breasts without expecting them to look identical.',notice:'A new difference in size or contour, skin dimpling, puckering, swelling, redness, or an orange-peel texture.'},
+ {how:'Slowly raise both arms above your head. Turn slightly from side to side to see the outer breast and underarm areas.',notice:'New pulling of the skin or nipple, one breast moving differently, or a new bulge near the underarm.'},
+ {how:'Place a folded towel under the shoulder on the side being checked. Use the flat pads of three middle fingers in small circles with light, medium, then firmer pressure.',notice:'A new persistent lump, thickened area, or one spot that feels clearly different from the same area on the other side.'},
+ {how:'Choose one repeatable pattern: vertical lines, widening circles, or wedges from nipple outward. Cover collarbone to bra line and breastbone to underarm.',notice:'Do not repeatedly press one area. Cover the whole area consistently and learn what is usual for you.'},
+ {how:'With wet, soapy skin, use flat finger pads and the same systematic pattern. Keep pressure gentle and avoid pinching.',notice:'A new lump, thickening, focal tenderness, skin change, or swelling that remains after your menstrual cycle.'},
+ {how:'Look at the nipples rather than repeatedly squeezing them. Note any new position or visible skin change.',notice:'New inward turning, persistent crusting or rash, or spontaneous bloody or clear discharge should be assessed.'}
+];
+function renderGuide(){const card=stepCards[guideIndex],detail=guideDetails[guideIndex];guideBody.innerHTML=`<span class="section-kicker">Step ${guideIndex+1} of ${stepCards.length}</span><div class="dialog-reference-art">${card.querySelector('.step-art').outerHTML}</div><h2>${card.querySelector('h3').textContent}</h2><p>${card.querySelector('p').textContent}</p><div class="guide-detail-copy"><section><b><i class="bi bi-list-check"></i> How to do it</b><p>${detail.how}</p></section><section><b><i class="bi bi-eye"></i> What to notice</b><p>${detail.notice}</p></section></div><div class="dialog-safety"><i class="bi bi-shield-check"></i>Be gentle. This awareness check cannot diagnose cancer or replace screening. Seek medical advice for a new or persistent change.</div>`;guideProgress.style.width=`${(guideIndex+1)/stepCards.length*100}%`;guideBack.disabled=guideIndex===0;guideNext.textContent=guideIndex===stepCards.length-1?'Finish':'Next Step';}
+function openGuide(index=0){guideIndex=index;renderGuide();guideDialog.showModal();}document.getElementById('openGuide').onclick=()=>openGuide();stepCards.forEach((card,index)=>card.querySelector('button').onclick=()=>openGuide(index));guideBack.onclick=()=>{guideIndex=Math.max(0,guideIndex-1);renderGuide();};guideNext.onclick=()=>{if(guideIndex===stepCards.length-1)guideDialog.close();else{guideIndex++;renderGuide();}};
+const trackerDialog=document.getElementById('trackerDialog'),selectedBox=document.getElementById('selectedSymptoms'),trackerForm=document.getElementById('symptomTracker'),selected=new Set(),storageKey='oncovision-self-check-'+{{ user_name|tojson }};trackerForm.date.value=new Date().toISOString().slice(0,10);const escapeHtml=value=>String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+function renderSelected(){selectedBox.innerHTML=selected.size?[...selected].map(item=>`<span>${item}<button type="button" data-remove="${item}">×</button></span>`).join(''):'Select a symptom card first, or add details below.';selectedBox.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{selected.delete(button.dataset.remove);document.querySelector(`[data-symptom="${button.dataset.remove}"]`)?.classList.remove('selected');renderSelected();});}
+document.querySelectorAll('.symptom-card').forEach(card=>card.onclick=()=>{const value=card.dataset.symptom;if(selected.has(value)){selected.delete(value);card.classList.remove('selected');}else{selected.add(value);card.classList.add('selected');}renderSelected();});
+function records(){try{return JSON.parse(localStorage.getItem(storageKey)||'[]')}catch{return[]}}function renderHistory(){const items=records();document.getElementById('trackerHistory').innerHTML=items.length?`<h3>Saved Notes</h3>${items.slice(0,3).map(item=>`<article><b>${escapeHtml(item.date)} · ${escapeHtml(item.location)}</b><span>${escapeHtml(item.symptoms.join(', ')||'Other change')}</span><p>${escapeHtml(item.notes)}</p></article>`).join('')}`:'';}
+document.getElementById('openTracker').onclick=()=>{renderSelected();renderHistory();trackerDialog.showModal();};trackerForm.onsubmit=event=>{event.preventDefault();const data=new FormData(trackerForm),items=records();items.unshift({date:data.get('date'),location:data.get('location'),notes:data.get('notes'),symptoms:[...selected]});localStorage.setItem(storageKey,JSON.stringify(items.slice(0,10)));trackerDialog.close();trackerForm.reset();trackerForm.date.value=new Date().toISOString().slice(0,10);selected.clear();document.querySelectorAll('.symptom-card.selected').forEach(card=>card.classList.remove('selected'));const toast=document.getElementById('selfSaveToast');toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2600);};
+</script>{% endblock %}

@@ -1,0 +1,179 @@
+{% extends 'doctor_shell.html' %}
+{% block title %}Clinical Assessment | OncoVision{% endblock %}
+{% set active_page = 'assessment' %}
+{% set page_title = 'Clinical Assessment' %}
+
+{% block doctor_content %}
+<main class="clinical-main clinical-light-theme">
+  <header class="clinical-head">
+    <div>
+      <i class="bi bi-shield-plus"></i>
+      <h1>Doctor Mode<small>Clinical Assessment & Cancer Stage Prediction</small></h1>
+    </div>
+    <div class="clinical-patient-entry">
+      <label>Patient Name
+        <input form="clinicalForm" name="patient_name" type="text" required autocomplete="name" placeholder="Enter patient name">
+      </label>
+      <label>Patient ID
+        <input form="clinicalForm" name="patient_id" type="text" required autocomplete="off" placeholder="Enter patient ID">
+      </label>
+    </div>
+  </header>
+
+  <div class="clinical-layout">
+    <div class="clinical-column">
+      <section class="panel">
+        <div class="number-title"><span>1</span><h4>Clinical Data Entry<small>Enter patient clinical and pathological details</small></h4></div>
+        <form id="clinicalForm" data-manages-save>
+          <div class="clinical-fields">
+            {% for name,label,prompt,options,help in [
+              ('tumor','Tumor (T) - Primary Tumor Size','Select T stage',['T1','T2','T3','T4'],'Select the documented primary tumor category'),
+              ('node','Node (N) - Regional Lymph Nodes','Select N stage',['N0','N1','N2','N3'],'Select the documented regional lymph-node category'),
+              ('metastasis','Metastasis (M) - Distant Metastasis','Select M stage',['M0','M1'],'Select the documented distant-metastasis category'),
+              ('grade','Histologic Grade','Select grade',['Grade 1','Grade 2','Grade 3'],'Select the documented histologic grade'),
+              ('er','ER (Estrogen Receptor)','Select ER status',['Positive','Negative'],''),
+              ('pr','PR (Progesterone Receptor)','Select PR status',['Positive','Negative'],''),
+              ('her2','HER2 Status','Select HER2 status',['Negative','Positive'],'' )
+            ] %}
+            <label>{{ label }}
+              <select name="{{ name }}" required>
+                <option value="" selected disabled>{{ prompt }}</option>
+                {% for option in options %}<option value="{{ option }}">{{ option }}</option>{% endfor %}
+              </select>
+              {% if help %}<small>{{ help }}</small>{% endif %}
+            </label>
+            {% endfor %}
+            <label>Ki-67 Proliferation Index (%)
+              <div class="input-unit"><input name="ki67" type="number" min="0" max="100" step="0.1" value="0" required><span>%</span></div>
+            </label>
+            <label>Patient Age
+              <div class="input-unit"><input name="age" type="number" min="1" max="130" step="1" value="0" required><span>years</span></div>
+            </label>
+          </div>
+          <label class="notes-field">Additional Notes (Optional)<textarea name="notes" placeholder="Enter any additional clinical notes..."></textarea></label>
+          <div class="clinical-actions">
+            <button type="reset"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+            <button type="submit"><i class="bi bi-cpu"></i> Predict Stage</button>
+          </div>
+          <p class="clinical-form-error" id="clinicalFormError" role="alert"></p>
+        </form>
+      </section>
+
+      <section class="panel summary-ref">
+        <div class="number-title"><span>2</span><h4>Data Summary<small>Review entered clinical information</small></h4></div>
+        <div class="summary-grid">
+          {% for field,label,value,color,suffix in [
+            ('tumor','T Stage','—','purple',''),('node','N Stage','—','blue',''),('metastasis','M Stage','—','cyan',''),
+            ('grade','Grade','—','yellow',''),('er','ER','—','purple',''),('pr','PR','—','blue',''),
+            ('her2','HER2','—','green',''),('ki67','Ki-67','0','yellow','%'),('age','Age','0','purple',' years')
+          ] %}
+          <div class="{{ color }}"><small>{{ label }}</small><b data-summary-field="{{ field }}" data-suffix="{{ suffix }}">{{ value }}{{ suffix }}</b></div>
+          {% endfor %}
+        </div>
+      </section>
+      <button class="save-history" id="saveClinicalRecord"><i class="bi bi-save"></i> Save Record to Patient History</button>
+    </div>
+
+    <div class="clinical-column result-column">
+      <section class="panel">
+        <div class="number-title"><span>3</span><h4>AI Prediction Result<small>AJCC anatomic stage grouping based on clinical data</small></h4></div>
+        <div class="stage-box"><small>Predicted Cancer Stage</small><h2 id="predictedStageDisplay">Not calculated</h2><b id="tnmDisplay">Select values and click Predict Stage</b></div>
+        <div class="confidence-row"><span>TNM rule match</span><b id="confidenceValue">—</b></div>
+        <div class="progress-bar"><span id="confidenceBar" style="width:0%"></span></div>
+      </section>
+      <section class="panel">
+        <div class="number-title"><span>4</span><h4>AI Clinical Explanation<small>AI-generated contextual interpretation</small></h4></div>
+        <div class="clinical-summary" id="clinicalSummary">Submit the clinical data to generate an AJCC anatomic TNM stage-group explanation. Biomarkers and pathology remain essential clinical context.</div>
+        <div class="generated-tag"><i class="bi bi-stars"></i> Generated by OncoVision AI</div>
+      </section>
+      <section class="panel">
+        <div class="number-title"><span>5</span><h4>Treatment Considerations<small>Reference considerations for clinician review only</small></h4></div>
+        <ul class="treatment-list">{% for item in ['Surgery (Lumpectomy or Mastectomy)','Axillary Lymph Node Dissection / Sentinel Lymph Node Biopsy','Adjuvant Chemotherapy','Hormone Therapy (Endocrine Therapy)','Radiation Therapy','Regular Follow-up and Monitoring'] %}<li><i class="bi bi-check-circle-fill"></i>{{ item }}</li>{% endfor %}</ul>
+        <div class="disclaimer-box"><i class="bi bi-shield-exclamation"></i> AI suggestions are for reference only. Final treatment decisions must be made by the treating physician based on clinical judgment.</div>
+      </section>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const form = document.getElementById('clinicalForm');
+const errorBox = document.getElementById('clinicalFormError');
+let latestPayload = null;
+
+function formData() {
+  return Object.fromEntries(new FormData(form));
+}
+
+function syncSummary(data) {
+  document.querySelectorAll('[data-summary-field]').forEach((node) => {
+    const value = data[node.dataset.summaryField];
+    node.textContent = value === undefined || value === null || value === ''
+      ? '—'
+      : `${value}${node.dataset.suffix || ''}`;
+  });
+}
+
+function validateClinicalData(data) {
+  if (!data.patient_name?.trim()) return 'Enter the patient name.';
+  if (!data.patient_id?.trim()) return 'Enter the patient ID.';
+  if (['tumor', 'node', 'metastasis', 'grade', 'er', 'pr', 'her2'].some((field) => !data[field])) {
+    return 'Complete all required clinical fields.';
+  }
+  if (!Number.isFinite(Number(data.age)) || Number(data.age) < 1) return 'Enter a valid patient age greater than 0.';
+  const ki67 = Number(data.ki67);
+  if (!Number.isFinite(ki67) || ki67 < 0 || ki67 > 100) return 'Enter a Ki-67 value between 0 and 100.';
+  return '';
+}
+
+form.addEventListener('input', () => {
+  latestPayload = null;
+  syncSummary(formData());
+});
+
+form.addEventListener('reset', () => setTimeout(() => {
+  syncSummary(formData());
+  document.getElementById('predictedStageDisplay').textContent = 'Not calculated';
+  document.getElementById('tnmDisplay').textContent = 'Select values and click Predict Stage';
+  document.getElementById('confidenceValue').textContent = '—';
+  document.getElementById('confidenceBar').style.width = '0%';
+  document.getElementById('clinicalSummary').textContent = 'Submit the clinical data to generate an AJCC anatomic TNM stage-group explanation. Biomarkers and pathology remain essential clinical context.';
+  errorBox.textContent = '';
+  latestPayload = null;
+}, 0));
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const data = formData();
+  const validationError = validateClinicalData(data);
+  errorBox.textContent = validationError;
+  if (validationError) return;
+  syncSummary(data);
+  try {
+    const response = await fetch('/api/stage-predict', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+    const result = await response.json();
+    if (!response.ok) { errorBox.textContent = result.error || 'Stage could not be calculated.'; return; }
+    latestPayload = data;
+    document.getElementById('predictedStageDisplay').textContent = result.stage;
+    document.getElementById('tnmDisplay').textContent = `(${result.tumor} ${result.node} ${result.metastasis})`;
+    document.getElementById('confidenceValue').textContent = `${result.confidence}%`;
+    document.getElementById('confidenceBar').style.width = `${result.confidence}%`;
+    document.getElementById('clinicalSummary').textContent = result.summary;
+  } catch (error) {
+    errorBox.textContent = 'Unable to calculate the stage. Please try again.';
+  }
+});
+
+document.getElementById('saveClinicalRecord').addEventListener('click', async () => {
+  if (!latestPayload) { errorBox.textContent = 'Complete the form and predict the stage before saving this record.'; return; }
+  try {
+    const response = await fetch('/api/clinical-records', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(latestPayload)});
+    const result = await response.json();
+    errorBox.textContent = response.ok ? 'Record saved to patient history.' : (result.error || 'Record could not be saved.');
+  } catch (error) {
+    errorBox.textContent = 'Record could not be saved. Please try again.';
+  }
+});
+</script>
+{% endblock %}
